@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>THREE.js_GetOtherValue</title>
+    <link rel="stylesheet" href="../../css/main.css">
+</head>
+<body>
+
+    <!--https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_sidenav -->
+    <div id="content">
+        <div id="mySidenav" class="sidenav">
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+            <a id="1" href="#">Texture01</a>
+            <a id="2" href="#">Texture02</a>
+            <a id="3" href="#">Texture03</a>
+            <a id="4" href="#">Texture04</a>
+        </div>
+      
+      <span style="font-size:30px;cursor:pointer;" onclick="openNav()">&#9776; open</span>
+    
+      <div id="container" style="position: fixed;"></div>
+    </div>
+
+</body>
+
+<script>
+    function openNav() {
+      document.getElementById("mySidenav").style.width = "250px";
+    }
+    
+    function closeNav() {
+      document.getElementById("mySidenav").style.width = "0";
+    }
+
+  </script>
+
+<script type="module">
+
+    import * as THREE from '../../libs/three/three.module.js';
+    import { OrbitControls } from '../../libs/three/jsm/OrbitControls.js';
+
+    let container;
+    let scene, camera, renderer;
+    let loader,texture;
+    //貼圖存放陣列
+    let texture_arry = [];
+    let orbit;
+
+    init();
+    animate();
+
+    function init(){
+        
+        //創建場景
+        container = document.getElementById( 'container' );
+        scene = new THREE.Scene();
+        // 創建攝影機，視野(FOV)、縱橫比
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 6);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        // 創建WebGL渲染器
+        renderer = new THREE.WebGLRenderer({alpha: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        //添加環境光 HemisphereLight
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.2 );
+        hemiLight.position.set( 0, 20, 0 );
+        scene.add(hemiLight);
+
+        //添加平行光 Add directional light
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(-30, 50, -30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+
+        scene.add(dirLight);
+
+        //平行光輔助器
+        const DirectionalLightHelper = new THREE.DirectionalLightHelper( dirLight, 5 );
+        scene.add( DirectionalLightHelper );
+        
+        createFloor();
+
+        //材質讀取器
+        loader = new THREE.TextureLoader().setPath("../../assets/texture/");
+
+        textureloaded("marble_01_diff_1k.jpg");
+        texture_arry.push(texture);
+        textureloaded("brick_wall_003_diffuse_1k.jpg");
+        texture_arry.push(texture);
+        textureloaded("square_floor_diff_1k.jpg");
+        texture_arry.push(texture);
+        textureloaded("kitchen_wood_diff_1k.jpg");
+        texture_arry.push(texture);
+        
+        // 創建一個正方形Geometry
+        const geometry = new THREE.BoxBufferGeometry(1,1);
+        // 創建基礎材質球
+        const material = new THREE.MeshBasicMaterial({map: texture_arry[0] });
+        //創建一個網格Mesh
+        const cube = new THREE.Mesh(geometry, material);
+        cube.castShadow = true;
+        cube.position.set(0,0.5,0);
+        scene.add(cube);
+
+        //設置按鈕讀取貼圖
+
+        const matbtn01 = document.getElementById("1");
+        matbtn01.addEventListener("click",function(){
+            material.map = texture_arry[0];
+            material.map.needsUpdate = true;
+            material.needsUpdate = true;
+        });
+
+        const matbtn02 = document.getElementById("2");
+        matbtn02.addEventListener("click",function(){
+            material.map = texture_arry[1];
+            material.map.needsUpdate = true;
+            material.needsUpdate = true;
+        });
+
+        const matbtn03 = document.getElementById("3");
+        matbtn03.addEventListener("click",function(){
+            material.map = texture_arry[2];
+            material.map.needsUpdate = true;
+            material.needsUpdate = true;
+        });
+
+        const matbtn04 = document.getElementById("4");
+        matbtn04.addEventListener("click",function(){
+            material.map = texture_arry[3];
+            material.map.needsUpdate = true;
+            material.needsUpdate = true;
+        });
+
+        console.log(matbtn03);
+
+        orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.target.set(0, 0, 0);
+        orbit.update();
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    //讀取所需貼圖
+    function textureloaded(Texturename){
+        texture = loader.load(
+        Texturename,
+        function(texture){
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.offset.set(0,0);
+            texture.repeat.set(2,2);
+        },
+        function(err){
+            console.log("An error happened");
+        });
+    }
+
+    
+    function createFloor() {
+    let pos = { x: 0, y: -1, z: 3 };
+    let scale = { x: 100, y: 2, z: 100 };
+
+    let blockPlane = new THREE.Mesh(new THREE.BoxBufferGeometry(),
+    new THREE.MeshPhongMaterial({ color: 0xf9c834 }));
+    blockPlane.position.set(pos.x, pos.y, pos.z);
+    blockPlane.scale.set(scale.x, scale.y, scale.z);
+    blockPlane.castShadow = true;
+    blockPlane.receiveShadow = true;
+    scene.add(blockPlane);
+
+    blockPlane.userData.ground = true;
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    //渲染場景
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+    };
+</script>    
+</html>

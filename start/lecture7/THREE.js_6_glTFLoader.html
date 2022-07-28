@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>THREE.js_glTFLoader</title>
+</head>
+    <style>
+        body {
+            overflow: hidden;
+            margin: 0px;
+        }
+    </style>
+    <body>
+        <div id="container"></div>
+    </body>
+    <script type="module">
+    import * as THREE from '../../libs/three/three.module.js';
+    import { OrbitControls } from '../../libs/three/jsm/OrbitControls.js';
+    import { GLTFLoader } from '../../libs/three/jsm/GLTFLoader.js';
+    import { RGBELoader } from '../../libs/three/jsm/RGBELoader.js';
+    import { LoadingBar } from '../../libs/LoadingBar.js';
+    
+    /*
+        此範本為如何在THREE.js中使用glTFLoader讀取glTF檔
+    */
+
+    //環境設置 Environment Setting
+    let container;
+    let scene, camera, renderer;
+    //控制器 controller
+    let orbit;
+    let Object;
+    //讀取條
+    let loadingBar = new LoadingBar();
+
+    init();
+
+        function init(){
+
+        //創建場景
+        container = document.getElementById( 'container' );
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xbfd1e5);
+
+        //創建攝影機、視野(FOV)、綜橫比
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 8, 12);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+        //創建WebGL渲染器
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight)
+        renderer.shadowMap.enabled = true;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        setEnvironment();
+        container.appendChild( renderer.domElement );
+
+        //添加環境光 HemisphereLight
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.2 );
+        hemiLight.position.set( 0, 35, 0 );
+        scene.add(hemiLight);
+        
+        //環境光輔助器
+        const hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 5 );
+		scene.add( hemiLightHelper );
+
+        //添加平行光 Add directional light
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(-30, 50, -30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -70;
+        dirLight.shadow.camera.right = 70;
+        dirLight.shadow.camera.top = 70;
+        dirLight.shadow.camera.bottom = -70;
+        scene.add(dirLight);
+
+        //平行光輔助器
+        const DirectionalLightHelper = new THREE.DirectionalLightHelper( dirLight, 5 );
+        scene.add( DirectionalLightHelper );
+
+        //設定GLTF讀取
+        const gltfload = new GLTFLoader().setPath("../../assets/");
+        gltfload.load("office-chair.glb",
+            function(gltf){
+                Object = gltf.scene;
+                scene.add(Object);
+                loadingBar.visible = false;
+
+                //以一個object3D物件作為第一個參數的函數
+                Object.traverse( function ( object ) {
+                
+                //如果變數model是物件的話，將陰影功能設為true
+                if ( object.isMesh ) object.castShadow = true;
+
+                } );
+                renderer.setAnimationLoop( render );
+            },
+            function(xhr){
+                loadingBar.progress = (xhr.loaded/xhr.total);
+            },
+            function(err){
+                console.log("有問題");
+            }
+        );
+        console.log(gltfload);
+        createFloor();
+
+        window.addEventListener('resize', onWindowResize);
+
+        orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.target.set(0, 3.5, 0);
+        orbit.update();
+
+    }
+    //
+
+    function setEnvironment(){
+        const loader = new RGBELoader().setDataType( THREE.UnsignedByteType );
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+        
+        loader.load( '../../assets/hdr/venice_sunset_1k.hdr', 
+        function( texture ){
+            //從 equirectangular 紋理生成 PMREM。
+            const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
+            pmremGenerator.dispose();
+
+            scene.environment = envMap;
+
+        }, undefined, 
+        function(err){
+            console.error( 'An error occurred setting the environment');
+        } );
+    }
+
+    //讀取GLTF
+
+    function createFloor() {
+    let pos = { x: 0, y: -1, z: 3 };
+    let scale = { x: 100, y: 2, z: 100 };
+
+    let blockPlane = new THREE.Mesh(new THREE.BoxBufferGeometry(),
+    new THREE.MeshPhongMaterial({ color: 0xf9c834 }));
+    blockPlane.position.set(pos.x, pos.y, pos.z);
+    blockPlane.scale.set(scale.x, scale.y, scale.z);
+    blockPlane.castShadow = true;
+    blockPlane.receiveShadow = true;
+    scene.add(blockPlane);
+
+    blockPlane.userData.ground = true;
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    //場景渲染出來
+    function animate() {
+        renderer.setAnimationLoop( render );
+    }
+
+    function render(){
+        renderer.render(scene, camera);
+        //物件旋轉
+    }
+ 
+    </script>    
+</html>

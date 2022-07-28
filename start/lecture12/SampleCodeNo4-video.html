@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<head>
+	<title>Three.js Marker-Based Video</title>
+	<!-- 匯入 three.js -->
+	<script src='../../libs/three/three.min.js'></script>
+	<!-- 匯入 jsartookit -->
+	<script src="../../libs/jsartoolkit5/artoolkit.min.js"></script>
+	<script src="../../libs/jsartoolkit5/artoolkit.api.js"></script>
+	<!-- 匯入 threex.artoolkit -->
+	<script src="../../libs/threex/threex-artoolkitsource.js"></script>
+	<script src="../../libs/threex/threex-artoolkitcontext.js"></script>
+	<script src="../../libs/threex/threex-arbasecontrols.js"></script>
+	<script src="../../libs/threex/threex-armarkercontrols.js"></script>
+</head>
+
+<!-- body外邊距為0-->
+<!-- https://developer.mozilla.org/zh-CN/docs/Web/CSS/margin -->
+<!-- overflow body的内容超出範圍隱藏 -->
+<!-- https://developer.mozilla.org/zh-CN/docs/Web/CSS/overflow -->
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+	
+<!-- 渲染場景位置 -->
+<div id="renderbody"></div>
+
+<button type="button" id="button01" style="position: fixed;">click</button>
+
+<!-- 網頁嵌入影片 -->
+<!-- https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video -->
+<video id="video" loop crossOrigin="anonymous" webkit-playsinline style="display:none">
+	<source src="../../assets/video/sintel.ogv" type='video/ogg; codecs="theora, vorbis"'>
+	<source src="../../assets/video/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+</video>
+
+<!--
+	此範本為 THREE.js Marker-Based 使用Button 切換播放/暫停影片
+-->
+
+<!-- 
+  Example created by Lee Stemkoski: https://github.com/stemkoski
+  Based on the AR.js library and examples created by Jerome Etienne: https://github.com/jeromeetienne/AR.js/
+-->
+
+<script>
+
+//環境設置 Environment Setting
+let scene, camera, renderer, clock, deltaTime, totalTime;
+
+let arToolkitSource, arToolkitContext;
+
+let markerRoot1;
+
+let mesh1;
+
+initialize();
+animate();
+
+function initialize()
+{
+	scene = new THREE.Scene();
+
+	let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+	scene.add( ambientLight );
+				
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.getElementById("renderbody").appendChild( renderer.domElement );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+	
+	////////////////////////////////////////////////////////////
+	// 設置 arToolkitSource
+	////////////////////////////////////////////////////////////
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+		{
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	// handle resize event
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+	
+	////////////////////////////////////////////////////////////
+	// 設置 arToolkitContext
+	////////////////////////////////////////////////////////////	
+
+	// 創建 atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: '../../data/camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+	// 初始化完成後將投影矩陣複製攝影機上
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+	////////////////////////////////////////////////////////////
+	// 設置 markerRoots
+	////////////////////////////////////////////////////////////
+
+	// 建構 markerControls
+	markerRoot1 = new THREE.Group();
+	scene.add(markerRoot1);
+	let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+		type: 'pattern', patternUrl: "../../data/hiro.patt",
+	})
+
+	let geometry1 = new THREE.PlaneBufferGeometry(2,2, 4,4);
+
+	//獲取ID名為video的元素
+	let video = document.getElementById( 'video' );
+	//影片貼圖
+	//https://threejs.org/docs/#api/en/textures/VideoTexture
+	let texture = new THREE.VideoTexture( video );
+	texture.minFilter = THREE.LinearFilter;
+	texture.magFilter = THREE.LinearFilter;
+	texture.format = THREE.RGBFormat;
+	let material1 = new THREE.MeshBasicMaterial( { map: texture } );
+	
+	mesh1 = new THREE.Mesh( geometry1, material1 );
+	mesh1.rotation.x = -Math.PI/2;
+	
+	markerRoot1.add( mesh1 );
+
+
+	const btn_playvideo = document.getElementById("button01").addEventListener("click",function(){
+		//當按鈕按下時，video為暫停狀態下，切換成播放
+		if(video.paused){
+			video.play();
+		}
+		//否則將video切換成暫停
+		else{
+			video.pause();
+		}
+	});
+}
+
+
+function update()
+{
+	// 每一幀更新artoolkit
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+}
+
+
+function render()
+{
+	renderer.render( scene, camera );
+}
+
+
+function animate()
+{
+	requestAnimationFrame(animate);
+	deltaTime = clock.getDelta();
+	totalTime += deltaTime;
+	update();
+	render();
+}
+
+</script>
+
+</body>
+</html>

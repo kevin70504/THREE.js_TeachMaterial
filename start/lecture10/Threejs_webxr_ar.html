@@ -1,0 +1,116 @@
+<html lang="en">
+  <head>
+    <title>three.js ar</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <link type="text/css" rel="stylesheet" href="../../css/main.css" />
+  </head>
+  <body>
+    <script></script>
+
+    <div id="content">
+      <div id="container" style="position: fixed;"></div>
+    </div>
+
+    <!-- JaveScript ES6 模組 -->
+    <script type="module">
+      //匯入THREE.module.js
+      import * as THREE from '../../libs/three/three.module.js';
+      //匯入ARButton.js
+      import { ARButton } from "../../libs/three/jsm/ARButton.js";
+
+      //環境設置 Environment Setting
+      let container;
+      let camera, scene, renderer;
+      let controller;
+
+      init();
+      animate();
+
+      function init() {
+        container = document.createElement("div");
+        document.getElementById("container").appendChild(container);
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          0.01,
+          20
+        );
+
+        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+        light.position.set(0.5, 1, 0.25);
+        scene.add(light);
+
+        //
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        //開啟XR功能
+        renderer.xr.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        //
+
+        // Webxr可選功能 DOM 覆蓋功能
+        // https://www.w3.org/TR/webxr-dom-overlays-1/
+        let options = {
+          optionalFeatures: ["dom-overlay"]
+        };
+
+        options.domOverlay = { root: document.getElementById("content") };
+        document.body.appendChild(ARButton.createButton(renderer, options));
+
+        //
+
+				const geometry = new THREE.CylinderGeometry( 0, 0.05, 0.2, 32 ).rotateX( Math.PI / 2 );
+
+        //點擊放置預設模型
+				function onSelect() {
+
+					const material = new THREE.MeshPhongMaterial( { color: 0xffffff * Math.random() } );
+					const mesh = new THREE.Mesh( geometry, material );
+					mesh.position.set( 0, 0, - 0.3 ).applyMatrix4( controller.matrixWorld );
+					mesh.quaternion.setFromRotationMatrix( controller.matrixWorld );
+					scene.add( mesh );
+
+				}
+
+        //WebXRManager
+        //https://threejs.org/docs/#api/en/renderers/webxr/WebXRManager.getController
+				controller = renderer.xr.getController( 0 );
+        //點擊事件
+				controller.addEventListener( 'select', onSelect );
+				scene.add( controller );
+
+        //
+
+        window.addEventListener("resize", onWindowResize, false);
+
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      //
+
+      function animate() {
+        renderer.setAnimationLoop(render);
+      }
+
+      function render() {
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
+</html>
